@@ -27,4 +27,17 @@ class ApiConfig {
   static String get registerEndpoint => '$baseUrl/auth/register';
   static String get loginEndpoint => '$baseUrl/auth/login';
   static String get verifyEndpoint => '$baseUrl/auth/verify';
+
+  // Sprint 2: Endpoints de fotos de residuos
+  static String get uploadPhotoEndpoint => '$baseUrl/photos/upload';
+  static String userPhotosEndpoint(int userId) => '$baseUrl/photos/user/$userId';
+
+  /// Convierte una URL relativa (/uploads/...) a URL completa accesible por la app
+  static String fullPhotoUrl(String relativeUrl) {
+    if (relativeUrl.startsWith('http://') || relativeUrl.startsWith('https://')) {
+      return relativeUrl;
+    }
+    final hostBase = baseUrl.replaceAll('/api', '');
+    return '$hostBase$relativeUrl';
+  }
 }

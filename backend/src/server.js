@@ -1,14 +1,20 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { initDatabase } = require('./database');
 const authRoutes = require('./routes/authRoutes');
+const photoRoutes = require('./routes/photoRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares globales
+// Middlewares globales (con soporte para payloads grandes de fotos base64)
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
+
+// Servir archivos estáticos subidos (fotos escaneadas)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logging middleware simple
 app.use((req, res, next) => {
@@ -21,13 +27,14 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     app: 'EcoScan Backend API',
-    sprint: 'Sprint 1 - Autenticación',
+    sprint: 'Sprint 2 - Captura y Almacenamiento de Fotos',
     timestamp: new Date().toISOString()
   });
 });
 
-// Rutas de autenticación (Sprint 1)
+// Rutas de la API
 app.use('/api/auth', authRoutes);
+app.use('/api/photos', photoRoutes);
 
 // Manejador de rutas no encontradas (404)
 app.use((req, res) => {
