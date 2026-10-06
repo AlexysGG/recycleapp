@@ -211,27 +211,36 @@ Se desarrollaron dos pantallas centrales altamente fieles a las maquetas visuale
 
 ### 6.2. Pantalla de Captura EcoScan (`lib/screens/ecoscan_screen.dart` - Tarea 900 & Inspirada en Interfaz 3)
 - **Cabecera:** Botón de retroceso `←`, título centrado **EcoScan** en verde hoja y subtítulo *"Enfoca el residuo a escanear"*.
-- **Visor HUD de Escaneo:**
+- **Visor HUD de Escaneo en Vivo (In-App Live Camera):**
   - Contenedor rectangular oscuro `#1E2320` con esquinas redondeadas de 28 px.
+  - **Cámara en vivo integrada:** Stream continuo en tiempo real (`CameraPreview`) ajustado al visor con `BoxFit.cover` y bordes recortados sin salir de la app ni abrir apps externas.
   - Esquinas HUD verde neón `#69F0AE` dibujadas con `CustomPainter` (`_CornersPainter`).
-  - Silueta vectorial central representativa de una botella PET azulada.
+  - Retículo guía central y silueta translúcida para centrar residuos.
   - Línea láser interactiva con animación vertical suave continua.
 - **Barra de Acciones Inferior:**
-  - Botón *"Galería"* en forma de píldora gris claro `#E2E4E6`.
-  - Disparador de cámara circular grande: aro exterior verde `#14531E` con botón circular blanco interior.
+  - Botón *"Galería"*: **Abre la Galería exclusiva de EcoScan** (`EcoScanGalleryScreen`), mostrando únicamente las fotos tomadas en la aplicación y sus resultados ecológicos.
+  - Disparador de cámara circular grande: aro exterior verde `#14531E` con botón circular blanco interior para captura instantánea desde el visor.
 
-### 6.3. Manejo de Errores (Tarea 800 - Marisol Moreno)
+### 6.3. Galería Exclusiva de EcoScan (`lib/screens/ecoscan_gallery_screen.dart`)
+- Diseñada para visualizar **únicamente** las fotografías tomadas por el usuario dentro de EcoScan (no fotos del sistema).
+- Muestra el historial completo sincronizado con la base de datos SQLite y disco local:
+  - Tarjeta de resumen con total de residuos fotografiados y EcoPuntos acumulados.
+  - Cuadrícula de fotos con miniaturas reales, insignia de puntos ganados y fecha/hora.
+  - Modal detallado por foto: visualización ampliada, nombre del residuo identificado, tamaño, consejo de reciclaje específico y categoría.
+  - Estado vacío amigable con botón para realizar el primer escaneo.
+
+### 6.4. Manejo de Errores (Tarea 800 - Marisol Moreno)
 - Detección reactiva de errores (`CameraAccessException`, permisos rechazados o entorno emulador/desktop sin webcam).
 - Diálogo informativo con alerta amigable: permite cancelar o utilizar la opción *"Simular Captura"* con una imagen de muestra para continuar sin interrupciones.
 
-### 6.4. Confirmación Visual tras Guardar la Foto (Tarea 850 - Alexis Hernández)
+### 6.5. Confirmación Visual tras Guardar la Foto (Tarea 850 - Alexis Hernández)
 - Al completar la captura y subida, se presenta un `ModalBottomSheet` con:
   - Círculo animado de checkmark verde (`Icons.check_circle_rounded`).
   - Mensaje *"¡Foto Guardada y Registrada!"*.
   - Miniatura real del residuo capturado.
   - Nombre del material clasificado (*"Botella de plástico PET"*).
   - Insignia de EcoPuntos ganados (*"+50 pts"* con estrella dorada).
-  - Consejo ecológico contextual de disposición y reciclaje.
+  - Botón directo *"Ver en Galería EcoScan"* para saltar de inmediato al visor de capturas.
   - Botones *"Escanear Otro"* y *"Ir al Inicio"*.
 
 ---

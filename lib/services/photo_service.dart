@@ -130,10 +130,19 @@ class PhotoService {
         final body = await response.transform(utf8.decoder).join();
         final Map<String, dynamic> data = jsonDecode(body);
         final List list = data['photos'] ?? [];
-        return list.map((item) => PhotoModel.fromJson(item)).toList();
+        final serverPhotos = list.map((item) => PhotoModel.fromJson(item)).toList();
+        
+        // Sincronizar con _localScans evitando duplicados
+        for (final p in serverPhotos) {
+          final index = _localScans.indexWhere((x) => x.id == p.id);
+          if (index == -1) {
+            _localScans.add(p);
+          }
+        }
+        return _localScans;
       }
     } catch (_) {
-      // Retornar scans en memoria si no hay red
+      // Retornar scans locales si no hay red
     }
     return _localScans;
   }

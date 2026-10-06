@@ -4,6 +4,7 @@ import 'package:app1/main.dart';
 import 'package:app1/models/user_model.dart';
 import 'package:app1/screens/home_screen.dart';
 import 'package:app1/screens/ecoscan_screen.dart';
+import 'package:app1/screens/ecoscan_gallery_screen.dart';
 
 void main() {
   testWidgets('1. EcoScan Welcome Screen smoke test', (WidgetTester tester) async {
@@ -28,12 +29,10 @@ void main() {
       ),
     );
 
-    // Verificar encabezado de Image 2
     expect(find.text('¡Hola!'), findsOneWidget);
     expect(find.text('Haz la diferencia hoy'), findsOneWidget);
     expect(find.text('Alexis Hernández'), findsOneWidget);
 
-    // Verificar presencia de las 5 opciones de la interfaz
     expect(find.text('Escanear residuo'), findsOneWidget);
     expect(find.text('Eco IA'), findsOneWidget);
     expect(find.text('Mapa'), findsOneWidget);
@@ -54,12 +53,10 @@ void main() {
       ),
     );
 
-    // Tocar 'Escanear residuo'
     await tester.tap(find.text('Escanear residuo'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Verificar que estamos en la pantalla de escaneo EcoScan (Image 3)
     expect(find.text('EcoScan'), findsOneWidget);
     expect(find.text('Enfoca el residuo a escanear'), findsOneWidget);
     expect(find.text('Galería'), findsOneWidget);
@@ -76,5 +73,34 @@ void main() {
     expect(find.text('EcoScan'), findsOneWidget);
     expect(find.text('Enfoca el residuo a escanear'), findsOneWidget);
     expect(find.text('Galería'), findsOneWidget);
+  });
+
+  testWidgets('5. El botón Galería en EcoScanScreen abre la Galería exclusiva de EcoScan', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EcoScanScreen(),
+      ),
+    );
+
+    // Tocar el botón Galería
+    await tester.tap(find.text('Galería'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Debe abrir la pantalla de Galería exclusiva con los resultados de EcoScan
+    expect(find.text('Galería EcoScan'), findsOneWidget);
+  });
+
+  testWidgets('6. EcoScanGalleryScreen renderiza correctamente el estado de galería', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EcoScanGalleryScreen(),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Galería EcoScan'), findsOneWidget);
   });
 }

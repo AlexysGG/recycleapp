@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../models/photo_model.dart';
 import '../services/photo_service.dart';
 import '../theme/app_colors.dart';
+import 'ecoscan_gallery_screen.dart';
 
 /// Pantalla de Escaneo y Captura de Residuos (Sprint 2 - Tarea 900)
 /// Integra visor de cámara en vivo directamente dentro del recuadro (Image 3)
@@ -16,7 +16,6 @@ class EcoScanScreen extends StatefulWidget {
 }
 
 class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProviderStateMixin {
-  final ImagePicker _picker = ImagePicker();
   final PhotoService _photoService = PhotoService();
 
   CameraController? _cameraController;
@@ -108,23 +107,12 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
     }
   }
 
-  /// Selección desde galería
-  Future<void> _pickFromGallery() async {
-    try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
-      );
-
-      if (photo != null) {
-        final bytes = await photo.readAsBytes();
-        _processAndSavePhoto(bytes, photo.path, 'plastico');
-      }
-    } catch (e) {
-      _handleCaptureError('galería', e.toString());
-    }
+  /// Abre la galería exclusiva con únicamente las fotos capturadas en EcoScan
+  void _openEcoScanGallery() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EcoScanGalleryScreen()),
+    );
   }
 
   /// Tarea 800: Diálogo descriptivo y resiliente ante fallas de hardware
@@ -396,7 +384,36 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Botón directo para revisar la foto recién tomada en la galería
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openEcoScanGallery();
+                },
+                icon: const Icon(Icons.photo_library, color: Colors.white, size: 20),
+                label: const Text(
+                  'Ver en Galería EcoScan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
 
             Row(
               children: [
@@ -417,32 +434,31 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
                       style: TextStyle(
                         color: AppColors.primaryGreen,
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 14.5,
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: ElevatedButton(
+                  child: OutlinedButton(
                     onPressed: () {
                       Navigator.pop(ctx);
                       Navigator.pop(context);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
+                    style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: AppColors.textMuted, width: 1.2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      elevation: 0,
                     ),
                     child: const Text(
                       'Ir al Inicio',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 14.5,
                       ),
                     ),
                   ),
@@ -646,9 +662,9 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Botón Galería
+                  // Botón Galería (Abre el visor exclusivo de fotos EcoScan)
                   InkWell(
-                    onTap: _isProcessing ? null : _pickFromGallery,
+                    onTap: _isProcessing ? null : _openEcoScanGallery,
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
