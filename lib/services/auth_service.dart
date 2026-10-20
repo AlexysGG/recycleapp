@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../models/user_model.dart';
 import 'api_config.dart';
+import 'supabase_service.dart';
 
 /// Servicio de Autenticación para el Frontend Móvil de EcoScan
 class AuthService {
@@ -27,6 +28,46 @@ class AuthService {
     required String password,
     required bool terminosAceptados,
   }) async {
+    // 1. Integración prioritaria con Supabase Auth si está inicializado
+    if (SupabaseService().isInitialized) {
+      try {
+        final supabaseRes = await SupabaseService().signUp(
+          email: correoElectronico,
+          password: password,
+          fullName: nombreCompleto,
+        );
+
+        final user = supabaseRes.user;
+        if (user != null) {
+          final userModel = UserModel(
+            id: user.id.hashCode.abs(),
+            nombreCompleto: nombreCompleto.trim(),
+            correoElectronico: correoElectronico.trim().toLowerCase(),
+            terminosAceptados: terminosAceptados,
+            fechaCreacion: user.createdAt,
+          );
+          _currentUser = userModel;
+          _token = supabaseRes.session?.accessToken ?? 'supabase_session_${user.id}';
+
+          return AuthResponse(
+            success: true,
+            message: 'Usuario registrado exitosamente en Supabase.',
+            user: userModel,
+            token: _token,
+          );
+        } else {
+          return AuthResponse(
+            success: false,
+            message: 'No se pudo crear el usuario en Supabase.',
+          );
+        }
+      } catch (e) {
+        return AuthResponse(
+          success: false,
+          message: e.toString().replaceAll('AuthException: ', '').replaceAll('Exception: ', ''),
+        );
+      }
+    }
     final payload = {
       'nombreCompleto': nombreCompleto.trim(),
       'correoElectronico': correoElectronico.trim().toLowerCase(),
@@ -64,11 +105,54 @@ class AuthService {
     }
   }
 
-  /// Tarea 970: Inicio de sesión con JWT
+  /// Tarea 970: Inicio de sesión con JWT o Supabase Auth
   Future<AuthResponse> login({
     required String correoElectronico,
     required String password,
   }) async {
+    // 1. Integración prioritaria con Supabase Auth si está inicializado
+    if (SupabaseService().isInitialized) {
+      try {
+        final supabaseRes = await SupabaseService().signInWithPassword(
+          email: correoElectronico,
+          password: password,
+        );
+
+        final user = supabaseRes.user;
+        if (user != null) {
+          final fullName = user.userMetadata?['full_name'] as String? ??
+              user.userMetadata?['nombre_completo'] as String? ??
+              correoElectronico.split('@').first;
+          final userModel = UserModel(
+            id: user.id.hashCode.abs(),
+            nombreCompleto: fullName,
+            correoElectronico: correoElectronico.trim().toLowerCase(),
+            terminosAceptados: true,
+            fechaCreacion: user.createdAt,
+          );
+          _currentUser = userModel;
+          _token = supabaseRes.session?.accessToken ?? 'supabase_session_${user.id}';
+
+          return AuthResponse(
+            success: true,
+            message: 'Inicio de sesión exitoso con Supabase.',
+            user: userModel,
+            token: _token,
+          );
+        } else {
+          return AuthResponse(
+            success: false,
+            message: 'Credenciales inválidas en Supabase.',
+          );
+        }
+      } catch (e) {
+        return AuthResponse(
+          success: false,
+          message: e.toString().replaceAll('AuthException: ', '').replaceAll('Exception: ', ''),
+        );
+      }
+    }
+
     final payload = {
       'correoElectronico': correoElectronico.trim().toLowerCase(),
       'password': password,
@@ -108,6 +192,9 @@ class AuthService {
   void logout() {
     _currentUser = null;
     _token = null;
+    if (SupabaseService().isInitialized) {
+      SupabaseService().signOut();
+    }
   }
 
   // --- Implementación de respaldo local para pruebas sin backend encendido ---

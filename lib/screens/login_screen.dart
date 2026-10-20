@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
-import '../widgets/social_button.dart';
 import 'home_screen.dart';
 
 /// Tarea 850: Frontend: pantalla de login con manejo de errores (Alexis Hernandez)
@@ -327,48 +326,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                   ),
-                ),
-
-                const SizedBox(height: 38),
-
-                // 7. Sección: "Continuar con:"
-                const Text(
-                  'Continuar con:',
-                  style: TextStyle(
-                    color: AppColors.textDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // 8. Botones Sociales (Google y Facebook)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SocialButton.google(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Inicio con Google disponible próximamente.'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 18),
-                    SocialButton.facebook(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Inicio con Facebook disponible próximamente.'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                 ),
 
                 const SizedBox(height: 28),

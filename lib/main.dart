@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/welcome_screen.dart';
+import 'services/supabase_service.dart';
 import 'theme/app_colors.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicialización de Supabase (preparado para cuando se configuren las credenciales)
+  await SupabaseService.initialize();
 
   // Configuración de barra de estado transparente para plataformas móviles (Android & iOS)
   SystemChrome.setSystemUIOverlayStyle(
