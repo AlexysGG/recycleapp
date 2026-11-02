@@ -149,17 +149,34 @@ class PhotoService {
 
   int _getPuntosPorResiduo(String tipo) {
     switch (tipo.toLowerCase()) {
+      case 'battery':
+      case 'bateria':
+        return 80;
+      case 'metal':
       case 'aluminio':
         return 70;
       case 'vidrio':
+      case 'glass':
         return 60;
+      case 'clothes':
+      case 'textil':
+      case 'shoes':
+      case 'calzado':
+        return 45;
       case 'carton':
+      case 'cardboard':
         return 40;
-      case 'papel':
-        return 30;
       case 'organico':
+      case 'biological':
         return 35;
+      case 'papel':
+      case 'paper':
+        return 30;
+      case 'trash':
+      case 'basura':
+        return 15;
       case 'plastico':
+      case 'plastic':
       default:
         return 50;
     }
@@ -167,17 +184,35 @@ class PhotoService {
 
   String _getNombreResiduo(String tipo) {
     switch (tipo.toLowerCase()) {
+      case 'battery':
+      case 'bateria':
+        return 'Batería o pila';
+      case 'metal':
       case 'aluminio':
-        return 'Lata de aluminio';
+        return 'Lata o residuo de metal';
       case 'vidrio':
+      case 'glass':
         return 'Botella de vidrio';
       case 'carton':
+      case 'cardboard':
         return 'Caja de cartón';
       case 'papel':
+      case 'paper':
         return 'Papel reciclable';
       case 'organico':
+      case 'biological':
         return 'Residuo orgánico';
+      case 'clothes':
+      case 'textil':
+        return 'Prenda o textil reciclable';
+      case 'shoes':
+      case 'calzado':
+        return 'Calzado o zapatos';
+      case 'trash':
+      case 'basura':
+        return 'Desecho general no reciclable';
       case 'plastico':
+      case 'plastic':
       default:
         return 'Botella de plástico PET';
     }

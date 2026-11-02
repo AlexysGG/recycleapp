@@ -9,6 +9,20 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+// Alinea el JVM target de Java con el de Kotlin (17) en todos los plugins
+// (p.ej. tflite_flutter declara Java 11 y provoca "Inconsistent JVM Target").
+subprojects { sp ->
+    if (sp.name != "app") {
+        sp.afterEvaluate {
+            if (sp.hasProperty("android")) {
+                sp.android.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }

@@ -1,13 +1,15 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/photo_model.dart';
+import '../services/classifier_service.dart';
 import '../services/photo_service.dart';
 import '../theme/app_colors.dart';
 import 'ecoscan_gallery_screen.dart';
 
 /// Pantalla de Escaneo y Captura de Residuos (Sprint 2 - Tarea 900)
-/// Integra visor de cámara en vivo directamente dentro del recuadro (Image 3)
+/// Integra visor de cámara en vivo y reconocimiento inteligente con modelo TFLite
 class EcoScanScreen extends StatefulWidget {
   const EcoScanScreen({super.key});
 
@@ -17,6 +19,8 @@ class EcoScanScreen extends StatefulWidget {
 
 class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProviderStateMixin {
   final PhotoService _photoService = PhotoService();
+  final ClassifierService _classifierService = ClassifierService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   CameraController? _cameraController;
   bool _isCameraReady = false;
@@ -41,6 +45,9 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
 
     // 2. Inicializar la cámara nativa integrada dentro del recuadro
     _initLiveCamera();
+
+    // 3. Inicializar el clasificador TFLite y etiquetas en segundo plano
+    _classifierService.initialize();
   }
 
   Future<void> _initLiveCamera() async {
@@ -77,6 +84,7 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
   void dispose() {
     _scanAnimationController.dispose();
     _cameraController?.dispose();
+    _classifierService.dispose();
     super.dispose();
   }
 
@@ -94,7 +102,7 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
 
         final XFile photo = await _cameraController!.takePicture();
         final bytes = await photo.readAsBytes();
-        await _processAndSavePhoto(bytes, photo.path, 'plastico');
+        await _processAndSavePhoto(bytes, photo.path);
       } catch (e) {
         setState(() {
           _isProcessing = false;
@@ -104,6 +112,35 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
     } else {
       // Si la cámara en vivo no está lista o estamos en emulador sin cámara, simula o usa fallback
       _simulateCapture();
+    }
+  }
+
+  /// Permite seleccionar una foto desde la galería del dispositivo para clasificarla
+  Future<void> _pickFromGallery() async {
+    if (_isProcessing) return;
+
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        await _processAndSavePhoto(bytes, picked.path);
+      }
+    } catch (e) {
+      debugPrint('Error al seleccionar imagen de galería: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo cargar la imagen seleccionada: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -155,7 +192,7 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
             ),
             const SizedBox(height: 14),
             const Text(
-              '¿Deseas simular una captura de residuo para probar el registro y los EcoPuntos?',
+              '¿Deseas seleccionar una foto de la galería o simular una captura?',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ],
@@ -164,6 +201,13 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _pickFromGallery();
+            },
+            child: const Text('Elegir de Galería', style: TextStyle(color: AppColors.primaryGreen)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -182,32 +226,42 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
   }
 
   /// Simulación para pruebas en entornos sin cámara física
-  void _simulateCapture() {
-    final dummyBytes = Uint8List.fromList([
-      0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
-      0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43,
-      0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09,
-      0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
-      0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
-      0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29,
-      0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
-      0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xD9
-    ]);
-    _processAndSavePhoto(dummyBytes, 'demo_pet_bottle.jpg', 'plastico');
+  Future<void> _simulateCapture() async {
+    try {
+      final byteData = await DefaultAssetBundle.of(context).load('assets/images/iconapp.jpeg');
+      final bytes = byteData.buffer.asUint8List();
+      await _processAndSavePhoto(bytes, 'simulated_scan.jpg');
+    } catch (_) {
+      final dummyBytes = Uint8List.fromList([
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+        0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43,
+        0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09,
+        0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
+        0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
+        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29,
+        0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
+        0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xD9
+      ]);
+      await _processAndSavePhoto(dummyBytes, 'demo_simulado.jpg');
+    }
   }
 
-  /// Tarea 1000 & 850: Subir foto y mostrar confirmación visual
-  Future<void> _processAndSavePhoto(Uint8List bytes, String path, String tipoResiduo) async {
+  /// Ejecuta el reconocimiento con el modelo TFLite y guarda el resultado
+  Future<void> _processAndSavePhoto(Uint8List bytes, String path) async {
     setState(() {
       _isProcessing = true;
       _imageBytes = bytes;
     });
 
     try {
+      // 1. Clasificación mediante el modelo TFLite
+      final recognition = await _classifierService.classifyImage(bytes);
+
+      // 2. Guardar y registrar con el servicio existente de fotos
       final response = await _photoService.uploadPhoto(
         imageBytes: bytes,
-        tipoResiduo: tipoResiduo,
-        nombrePersonalizado: 'Botella PET Escaneada',
+        tipoResiduo: recognition.categoryKey,
+        nombrePersonalizado: recognition.description,
         localPath: path,
       );
 
@@ -216,8 +270,8 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
         _isProcessing = false;
       });
 
-      // Tarea 850: Frontend - Confirmación visual tras guardar la foto
-      _showConfirmationDialog(response);
+      // 3. Confirmación visual con los datos clasificados por el modelo
+      _showConfirmationDialog(response, recognition);
 
     } catch (e) {
       if (!mounted) return;
@@ -226,15 +280,15 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al guardar foto: $e'),
+          content: Text('Error al clasificar y guardar foto: $e'),
           backgroundColor: AppColors.error,
         ),
       );
     }
   }
 
-  /// Tarea 850: Confirmación visual tras guardar la foto (modal enriquecido)
-  void _showConfirmationDialog(PhotoUploadResponse response) {
+  /// Tarea 850: Confirmación visual tras clasificar y guardar la foto (modal enriquecido con IA)
+  void _showConfirmationDialog(PhotoUploadResponse response, RecognitionResult recognition) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -275,7 +329,7 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
             const SizedBox(height: 16),
 
             const Text(
-              '¡Foto Guardada y Registrada!',
+              '¡Residuo Reconocido y Registrado!',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -291,6 +345,7 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
             ),
             const SizedBox(height: 20),
 
+            // Tarjeta de información del residuo reconocido con TFLite
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -301,8 +356,8 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
               child: Row(
                 children: [
                   Container(
-                    width: 54,
-                    height: 54,
+                    width: 58,
+                    height: 58,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -321,17 +376,35 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          response.photo?.tipoResiduo ?? 'Botella de plástico PET',
+                          recognition.labelSpanish,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textDark,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Categoría: Plásticos reciclables',
-                          style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                        const SizedBox(height: 3),
+                        Text(
+                          recognition.description,
+                          style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 5),
+                        // Badge con precisión del modelo de Machine Learning
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFC8E6C9)),
+                          ),
+                          child: Text(
+                            'IA: ${recognition.confidencePercentage}% confianza',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -364,20 +437,21 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
 
             const SizedBox(height: 18),
 
+            // Consejo ecológico dinámico según el residuo reconocido
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.lightbulb_outline, color: Color(0xFF2E7D32), size: 20),
-                  SizedBox(width: 10),
+                  const Icon(Icons.lightbulb_outline, color: Color(0xFF2E7D32), size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Consejo: Recuerda retirar la tapa y aplastar la botella para optimizar el contenedor.',
-                      style: TextStyle(fontSize: 12.5, color: Color(0xFF1B5E20)),
+                      'Consejo: ${recognition.tips}',
+                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF1B5E20)),
                     ),
                   ),
                 ],
@@ -480,14 +554,33 @@ class _EcoScanScreenState extends State<EcoScanScreen> with SingleTickerProvider
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Barra superior con botón regresar
+            // Barra superior con botón regresar y selección desde galería
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
                     onPressed: () => Navigator.pop(context),
+                  ),
+                  Tooltip(
+                    message: 'Elegir imagen de la galería',
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.photo_library_outlined,
+                          color: AppColors.primaryGreen,
+                          size: 24,
+                        ),
+                      ),
+                      onPressed: _isProcessing ? null : _pickFromGallery,
+                    ),
                   ),
                 ],
               ),

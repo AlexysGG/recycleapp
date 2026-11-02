@@ -12,12 +12,25 @@ if (!fs.existsSync(uploadsDir)) {
  * Mapeo de residuos reciclables reconocidos y sus puntos ecológicos
  */
 const WASTE_CATEGORIES = {
-  'plastico': { name: 'Botella de plástico PET', points: 50 },
+  'plastico': { name: 'Botella o envase de plástico', points: 50 },
+  'plastic': { name: 'Botella o envase de plástico', points: 50 },
   'vidrio': { name: 'Botella o envase de vidrio', points: 60 },
+  'glass': { name: 'Botella o envase de vidrio', points: 60 },
   'aluminio': { name: 'Lata de aluminio', points: 70 },
+  'metal': { name: 'Lata o residuo de metal', points: 70 },
   'carton': { name: 'Caja o envase de cartón', points: 40 },
+  'cardboard': { name: 'Caja o envase de cartón', points: 40 },
   'papel': { name: 'Papel reciclable', points: 30 },
+  'paper': { name: 'Papel reciclable', points: 30 },
   'organico': { name: 'Residuo orgánico compostable', points: 35 },
+  'biological': { name: 'Residuo biológico u orgánico', points: 35 },
+  'battery': { name: 'Batería o pila reciclable', points: 80 },
+  'bateria': { name: 'Batería o pila reciclable', points: 80 },
+  'clothes': { name: 'Prenda o textil reciclable', points: 45 },
+  'textil': { name: 'Prenda o textil reciclable', points: 45 },
+  'shoes': { name: 'Calzado o zapatos', points: 45 },
+  'calzado': { name: 'Calzado o zapatos', points: 45 },
+  'trash': { name: 'Desecho general no reciclable', points: 15 },
   'general': { name: 'Residuo reciclable clasificado', points: 50 }
 };
 
